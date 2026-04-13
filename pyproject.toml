@@ -1,0 +1,16 @@
+[project]
+name = "hybrid-music-source-separation"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+    # pytorch to be installed manually
+    "musdb>=0.4.0",
+    "numpy",
+    "scipy",
+    "einops",
+    "julius",
+    "tqdm",
+    "soundfile",
+    "stempeg",
+    "museval",
+]
