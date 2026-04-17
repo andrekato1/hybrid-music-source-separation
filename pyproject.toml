@@ -13,4 +13,6 @@ dependencies = [
     "soundfile",
     "stempeg",
     "museval",
-]
+    "torchmetrics"
+    ]
+   

@@ -43,3 +43,9 @@ source .venv/bin/activate
 
 python download_data.py
 ```
+## Dataset
+
+Download from https://zenodo.org/records/1117372, extract into the data/ folder and convert the files to wav format using:
+```bash
+uv run python convert_to_wav.py
+```
