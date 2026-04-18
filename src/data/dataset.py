@@ -13,7 +13,7 @@ _VAL_INDICES: frozenset[int] = frozenset(
 )
 
 
-def load_musdb(root: str = "data/", is_wav: bool = False) -> tuple[list, list, list]:
+def load_musdb(root: str = "data/", is_wav: bool = True) -> tuple[list, list, list]:
     """Return (train_tracks, val_tracks, test_tracks) from the musdb18 root directory.
 
     Args:
@@ -131,7 +131,7 @@ class FullTrackDataset(Dataset):
 
 def get_dataloaders(
     root: str = "data/",
-    is_wav: bool = False,
+    is_wav: bool = True,
     segment_duration: float = SEGMENT_DURATION,
     sample_rate: int = SAMPLE_RATE,
     sources: list[str] = SOURCES,

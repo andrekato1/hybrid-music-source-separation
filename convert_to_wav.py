@@ -3,27 +3,47 @@ convert_to_wav.py
 -----------------
 One-time conversion of MUSDB18 .stem.mp4 files to WAV stems.
 
-Run this once before training to get much faster data loading.
-WAV files are written alongside the original .stem.mp4 files in data/train/ and data/test/.
+Run once before training, then set is_wav=True in dataset.py for faster loading.
 
 Usage:
     uv run python convert_to_wav.py
-
-After conversion, pass is_wav=True to get_dataloaders() or set IS_WAV=True in train.py.
 """
 
+from pathlib import Path
+import numpy as np
+import soundfile as sf
 import musdb
 
-print("Converting MUSDB18 stems to WAV format (one-time setup)...")
-print("This may take several minutes.\n")
+ROOT = Path("data/")
+SAMPLE_RATE = 44100
+SOURCES = ["drums", "bass", "other", "vocals"]
 
-mus = musdb.DB(root="data/", is_wav=False)
 
-for subset in ("train", "test"):
+def convert_subset(subset: str) -> None:
+    mus = musdb.DB(root=str(ROOT), is_wav=False)
     tracks = mus.load_mus_tracks(subsets=subset)
-    print(f"Converting {len(tracks)} {subset} tracks...")
+    print(f"\nConverting {len(tracks)} {subset} tracks...")
+
     for i, track in enumerate(tracks):
-        track.stems  # triggers WAV extraction via stempeg
+        out_dir = ROOT / subset / track.name
+        out_dir.mkdir(exist_ok=True)
+
+        # Load full track audio (no chunk — we want everything)
+        track.chunk_start = 0
+        track.chunk_duration = track.duration
+
+        # Write mixture
+        sf.write(out_dir / "mixture.wav", track.audio, SAMPLE_RATE)
+
+        # Write each stem
+        for source in SOURCES:
+            sf.write(out_dir / f"{source}.wav", track.targets[source].audio, SAMPLE_RATE)
+
         print(f"  [{i+1}/{len(tracks)}] {track.name}")
 
-print("\nDone. You can now use is_wav=True in get_dataloaders().")
+
+if __name__ == "__main__":
+    print("Converting MUSDB18 stems to WAV format (one-time setup)...")
+    convert_subset("train")
+    convert_subset("test")
+    print("\nDone. Set is_wav=True in train.py to use the converted files.")

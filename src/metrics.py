@@ -11,7 +11,7 @@ Two metrics are used:
 import numpy as np
 import torch
 from torch import Tensor
-from torchmetrics.audio import ScaleInvariantSignalDistortionRatio
+from torchmetrics.functional.audio.sdr import scale_invariant_signal_distortion_ratio
 
 
 def compute_sdr(estimate: np.ndarray, reference: np.ndarray) -> float:
@@ -37,9 +37,6 @@ def compute_sdr(estimate: np.ndarray, reference: np.ndarray) -> float:
     return float(np.nanmedian(sdr_frames))
 
 
-_si_sdr = ScaleInvariantSignalDistortionRatio()
-
-
 def compute_si_sdr(estimate: Tensor, target: Tensor) -> Tensor:
     """
     Scale-Invariant SDR (SI-SDR) for use during training and quick validation.
@@ -49,6 +46,6 @@ def compute_si_sdr(estimate: Tensor, target: Tensor) -> Tensor:
         target:   Tensor [B, C, T] or [B, T]
 
     Returns:
-        SI-SDR in dB, shape [B]
+        SI-SDR in dB, scalar (mean over batch)
     """
-    return _si_sdr(estimate, target)
+    return scale_invariant_signal_distortion_ratio(estimate, target)

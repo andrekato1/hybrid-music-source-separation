@@ -13,7 +13,6 @@ since they share the BaseSeparator interface: forward() takes a mixture
 tensor [B, C, T] and returns a dict of source estimates.
 """
 
-import math
 from typing import Optional
 
 import numpy as np
