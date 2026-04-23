@@ -62,8 +62,6 @@ class WaveformModel(nn.Module):
         # decode
         x = self.decoder(x, skips)
 
-        # reshape
-        x = x.view(x.size(0), self.audio_channels, x.size(-1))
 
-        return x
+        return {"vocals": x}
 
