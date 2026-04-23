@@ -9,7 +9,10 @@ Model inspired by
   year={2019}
 }
 """
+import math
+
 import torch
+import torch.nn.functional as F
 from torch import nn
 
 from .encoder import DemucsEncoder
@@ -46,6 +49,15 @@ class WaveformModel(nn.Module):
         self.lstm = BLSTM(dim=512, layers=lstm_layers)
         self.decoder = DemucsDecoder(in_channels=audio_channels)
 
+    # Leveraged from Demucs: https://github.com/facebookresearch/demucs/blob/v2/demucs/model.py
+    def valid_length(self, length):
+        """Return the nearest valid length >= `length` so the decoder output matches exactly."""
+        for _ in range(4):
+            length = math.ceil((length - 8) / 4) + 1
+            length += 2  # context - 1
+        for _ in range(4):
+            length = (length - 1) * 4 + 8
+        return int(length)
 
     def forward(self, x):
         """
@@ -53,6 +65,9 @@ class WaveformModel(nn.Module):
         Input: Mixed audio of shape (batch, audio_channels, time)
         Returns: Tensor separated sources of shape (batch, 1, audio_channels, time)
         """
+        length = x.shape[-1]
+        x = F.pad(x, (0, self.valid_length(length) - length))
+
         # encode
         x, skips = self.encoder(x)
 
@@ -62,6 +77,5 @@ class WaveformModel(nn.Module):
         # decode
         x = self.decoder(x, skips)
 
-
-        return {"vocals": x}
+        return {"vocals": x[..., :length]}
 
