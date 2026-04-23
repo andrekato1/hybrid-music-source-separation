@@ -12,8 +12,8 @@ Model inspired by
 import torch
 from torch import nn
 
-from encoder import DemucsEncoder
-from decoder import DemucsDecoder
+from .encoder import DemucsEncoder
+from .decoder import DemucsDecoder
 
 class BLSTM(nn.Module): ## Like Demuc
     def __init__(self, dim, layers=2):
@@ -25,12 +25,12 @@ class BLSTM(nn.Module): ## Like Demuc
                             )
         self.linear = nn.Linear(2 * dim, dim) ## defaults following Demucs logic
 
-        def forward(self, x):
-            x = x.permute(2,0,1)
-            x = self.lstm(x)[0]
-            x = self.linear(x)
-            x = x.permute(1,2,0)
-            return x
+    def forward(self, x):
+        x = x.permute(2,0,1)
+        x = self.lstm(x)[0]
+        x = self.linear(x)
+        x = x.permute(1,2,0)
+        return x
 
 class WaveformModel(nn.Module):
     def __init__(self, audio_channels=2, lstm_layers=2):
@@ -63,7 +63,7 @@ class WaveformModel(nn.Module):
         x = self.decoder(x, skips)
 
         # reshape
-        x = x.view(x.size(0), 1, self.audio_channels, x.size(-1))
+        x = x.view(x.size(0), self.audio_channels, x.size(-1))
 
         return x
 

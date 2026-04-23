@@ -57,7 +57,6 @@ class DemucsDecoder(nn.Module):
             nn.Conv1d(64, 128, kernel_size=context, stride=1),
             nn.GLU(dim=1),
             nn.ConvTranspose1d(64, in_channels, kernel_size=8, stride=4),
-            nn.ReLU(),
         )
 
     def forward(self, x, skips):
