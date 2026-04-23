@@ -31,7 +31,7 @@ class BLSTM(nn.Module): ## Like Demuc
     def forward(self, x):
         x = x.permute(2,0,1)
         x = self.lstm(x)[0]
-        x = self.linear(x)
+       # x = self.linear(x)
         x = x.permute(1,2,0)
         return x
 
@@ -46,7 +46,7 @@ class WaveformModel(nn.Module):
 
         self.audio_channels = audio_channels
         self.encoder = DemucsEncoder(in_channels = audio_channels)
-        self.lstm = BLSTM(dim=512, layers=lstm_layers)
+        #self.lstm = BLSTM(dim=512, layers=lstm_layers)
         self.decoder = DemucsDecoder(in_channels=audio_channels)
 
     # Leveraged from Demucs: https://github.com/facebookresearch/demucs/blob/v2/demucs/model.py
@@ -72,7 +72,7 @@ class WaveformModel(nn.Module):
         x, skips = self.encoder(x)
 
         # bottleneck
-        x = self.lstm(x)
+        #x = self.lstm(x)
 
         # decode
         x = self.decoder(x, skips)
