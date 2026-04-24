@@ -52,7 +52,7 @@ if __name__ == "__main__":
         sources=["vocals"],
     )
 
-    model = torch.compile(WaveformModel())
+    model = WaveformModel()
 
     train(
         model=model,
