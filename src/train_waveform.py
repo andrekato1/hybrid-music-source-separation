@@ -49,9 +49,10 @@ if __name__ == "__main__":
         batch_size=BATCH_SIZE,
         samples_per_track=SAMPLES_PER_TRACK,
         num_workers=NUM_WORKERS,
+        sources=["vocals"],
     )
 
-    model = WaveformModel()
+    model = torch.compile(WaveformModel())
 
     train(
         model=model,
