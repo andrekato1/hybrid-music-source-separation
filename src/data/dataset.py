@@ -58,7 +58,7 @@ class SegmentDataset(Dataset):
     ) -> None:
         # Store (path, total_samples) tuples — no shared mutable state, safe for num_workers > 0
         self.track_info = [
-            (track.path, int(track.duration * sample_rate))
+            (os.path.dirname(track.path), int(track.duration * sample_rate))
             for track in tracks
         ]
         self.segment_length = int(segment_duration * sample_rate)
