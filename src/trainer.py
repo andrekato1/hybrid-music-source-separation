@@ -86,12 +86,18 @@ def evaluate(
     model.eval()
     sdrs = []
 
+    chunk_samples = int(30 * 44100)  # process 30s at a time to avoid LSTM bottleneck
+
     for mixture, targets, track_name in tqdm(loader, desc="  eval", leave=False):
         mixture = mixture.to(device)  # [1, C, T]
         target = targets[target_source]  # [1, C, T], kept on CPU for museval
+        T = mixture.shape[-1]
 
-        estimates = model(mixture)
-        estimate = estimates[target_source].cpu()  # [1, C, T]
+        # split into chunks, run model on each, concatenate
+        chunks = [mixture[..., i:i + chunk_samples] for i in range(0, T, chunk_samples)]
+        estimate = torch.cat(
+            [model(chunk)[target_source] for chunk in chunks], dim=-1
+        ).cpu()  # [1, C, T]
 
         # museval expects numpy arrays of shape [T, C]
         est_np = estimate[0].T.numpy()   # [T, C]
