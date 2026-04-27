@@ -28,9 +28,10 @@ ROOT            = "data/"
 EXPERIMENT_NAME = "waveform_run_01"  # update per run
 N_EPOCHS        = 100
 LEARNING_RATE   = 3e-4
-BATCH_SIZE      = 8
+BATCH_SIZE      = 32
 SEGMENT_DURATION = 6.0   # seconds
-SAMPLES_PER_TRACK = 2
+SAMPLES_PER_TRACK = 50
+NUM_WORKERS     = 4       # set to 0 on Windows
 TARGET_SOURCE   = "vocals"
 NOTES           = ""
 
@@ -47,6 +48,8 @@ if __name__ == "__main__":
         segment_duration=SEGMENT_DURATION,
         batch_size=BATCH_SIZE,
         samples_per_track=SAMPLES_PER_TRACK,
+        num_workers=NUM_WORKERS,
+        sources=["vocals"],
     )
 
     model = WaveformModel()
