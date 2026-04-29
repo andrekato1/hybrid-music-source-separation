@@ -18,6 +18,8 @@ from typing import Optional
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
+from torch import Tensor
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
@@ -66,6 +68,62 @@ def train_one_epoch(
 
 
 # ---------------------------------------------------------------------------
+# Chunked inference for the spectrogram model
+# ---------------------------------------------------------------------------
+
+@torch.no_grad()
+def separate_in_chunks(
+    model: nn.Module,
+    mixture: Tensor,
+    chunk_samples: int,
+    overlap_samples: int,
+    device: torch.device,
+) -> dict[str, Tensor]:
+    """
+    Run model on a full-length mixture [1, C, T] using overlap-add chunking.
+    Returns a dict of source estimates on CPU with the same shape as mixture.
+    """
+    _, C, T = mixture.shape
+    stride = chunk_samples - overlap_samples
+    fade_in  = torch.linspace(0.0, 1.0, overlap_samples)
+    fade_out = torch.linspace(1.0, 0.0, overlap_samples)
+
+    out: dict[str, Tensor] | None = None
+    chunk_start = 0
+    chunk_idx = 0
+
+    while chunk_start < T:
+        chunk_end = min(chunk_start + chunk_samples, T)
+        actual = chunk_end - chunk_start
+        chunk = mixture[:, :, chunk_start:chunk_end]
+        if actual < chunk_samples:
+            chunk = F.pad(chunk, (0, chunk_samples - actual))
+
+        estimates = model(chunk.to(device))
+
+        if out is None:
+            out = {src: torch.zeros(1, C, T) for src in estimates}
+
+        is_first = chunk_idx == 0
+        is_last  = chunk_end >= T
+
+        for src, est in estimates.items():
+            seg = est.cpu()[:, :, :actual].clone()
+            if not is_first and overlap_samples > 0:
+                ov = min(overlap_samples, actual)
+                seg[:, :, :ov] *= fade_in[:ov].reshape(1, 1, -1)
+            if not is_last and overlap_samples > 0:
+                ov = min(overlap_samples, actual)
+                seg[:, :, actual - ov:] *= fade_out[:ov].reshape(1, 1, -1)
+            out[src][:, :, chunk_start:chunk_end] += seg
+
+        chunk_idx += 1
+        chunk_start += stride
+
+    return out
+
+
+# ---------------------------------------------------------------------------
 # Evaluation: full tracks
 # ---------------------------------------------------------------------------
 
@@ -75,6 +133,8 @@ def evaluate(
     loader: DataLoader,
     device: torch.device,
     target_source: str = "vocals",
+    chunk_samples: int = 4 * 44100,
+    overlap_samples: int | None = None,
 ) -> float:
     """
     Evaluate on full tracks (val or test set).
@@ -83,15 +143,18 @@ def evaluate(
     Note: loader must have batch_size=1 since tracks have variable length.
     Each batch is a single full song.
     """
+    if overlap_samples is None:
+        overlap_samples = chunk_samples // 4
+
     model.eval()
     sdrs = []
 
     for mixture, targets, track_name in tqdm(loader, desc="  eval", leave=False):
-        mixture = mixture.to(device)  # [1, C, T]
+        # mixture stays on CPU; separate_in_chunks handles device placement
         target = targets[target_source]  # [1, C, T], kept on CPU for museval
 
-        estimates = model(mixture)
-        estimate = estimates[target_source].cpu()  # [1, C, T]
+        estimates = separate_in_chunks(model, mixture, chunk_samples, overlap_samples, device)
+        estimate = estimates[target_source]  # already on CPU
 
         # museval expects numpy arrays of shape [T, C]
         est_np = estimate[0].T.numpy()   # [T, C]
@@ -160,6 +223,8 @@ def train(
     )
     logger = ExperimentLogger(experiment_name, config)
 
+    chunk_samples = train_loader.dataset.segment_length
+
     for epoch in range(1, n_epochs + 1):
         train_loss = train_one_epoch(
             model, train_loader, optimizer, loss_fn, device, target_source
@@ -167,7 +232,7 @@ def train(
 
         # Full-track validation is slow — run every N epochs and at the end
         if epoch % val_every_n_epochs == 0 or epoch == n_epochs:
-            val_sdr = evaluate(model, val_loader, device, target_source)
+            val_sdr = evaluate(model, val_loader, device, target_source, chunk_samples)
             logger.log_epoch(epoch, train_loss, val_sdr)
             logger.maybe_save_best(model, optimizer, epoch, val_sdr)
         else:

@@ -13,6 +13,6 @@ dependencies = [
     "soundfile",
     "stempeg",
     "museval",
-    "torchmetrics"
+    "pyyaml",
+    "torchmetrics>=1.9.0",
 ]
-   

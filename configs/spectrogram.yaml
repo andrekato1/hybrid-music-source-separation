@@ -1,0 +1,30 @@
+experiment:
+  name: "spectrogram_run_01"
+  notes: ""
+  seed: 42
+
+# sample_rate and sources are omitted — defaults (44100, all 4 stems) are always used.
+data:
+  root: "data/"
+  is_wav: true
+  segment_duration: 4.0      # seconds; paper uses 4s
+  batch_size: 8
+  samples_per_track: 50      # random crops per track per epoch (84 tracks = 4200 steps)
+  normalize: true
+  num_workers: 0
+
+model:
+  audio_channels: 2
+  n_sources: 4
+  n_fft: 4096
+  hop_length: 1024
+  channels: 36               # base channel count; doubles each encoder level
+  depth: 5
+  freq_stride: 2
+  lstm_layers: 1
+
+training:
+  n_epochs: 20
+  lr: 3.0e-4
+  target_source: "vocals"
+  val_every_n_epochs: 5
