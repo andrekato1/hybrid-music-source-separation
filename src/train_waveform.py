@@ -1,6 +1,6 @@
 import torch
-print(f"CUDA available: {torch.cuda.is_available()}")
-print(f"Device: {torch.cuda.get_device_name(0)}")
+#print(f"CUDA available: {torch.cuda.is_available()}")
+#print(f"Device: {torch.cuda.get_device_name(0)}")
 from src.data.dataset import get_dataloaders
 from src.models.waveform.model import WaveformModel
 from src.trainer import train
@@ -25,15 +25,15 @@ from src.trainer import train
 # ---------------------------------------------------------------------------
 
 ROOT            = "data/"
-EXPERIMENT_NAME = "waveform_run_01"  # update per run
-N_EPOCHS        = 100
+EXPERIMENT_NAME = "waveform_blstm_6s_b32_s50"  # update per run
+N_EPOCHS        = 50
 LEARNING_RATE   = 3e-4
 BATCH_SIZE      = 32
 SEGMENT_DURATION = 6.0   # seconds
 SAMPLES_PER_TRACK = 50
 NUM_WORKERS     = 4       # set to 0 on Windows
 TARGET_SOURCE   = "vocals"
-NOTES           = ""
+NOTES           = "Adding blstm"
 
 
 # ---------------------------------------------------------------------------
@@ -52,7 +52,7 @@ if __name__ == "__main__":
         sources=["vocals"],
     )
 
-    model = WaveformModel()
+    model = WaveformModel(base_channels=44)
 
     train(
         model=model,
