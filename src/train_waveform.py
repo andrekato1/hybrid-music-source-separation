@@ -25,15 +25,15 @@ from src.trainer import train
 # ---------------------------------------------------------------------------
 
 ROOT            = "data/"
-EXPERIMENT_NAME = "waveform_blstm_6s_b32_s50_cosine"  # update per run
+EXPERIMENT_NAME = "waveform_blstm_8s_b32_s100_cosine"  # update per run
 N_EPOCHS        = 350
 LEARNING_RATE   = 3e-4
 BATCH_SIZE      = 32
-SEGMENT_DURATION = 6.0   # seconds
-SAMPLES_PER_TRACK = 50
+SEGMENT_DURATION = 8.0   # seconds
+SAMPLES_PER_TRACK = 100
 NUM_WORKERS     = 4       # set to 0 on Windows
 TARGET_SOURCE   = "vocals"
-NOTES           = "cosine annealing lr schedule, 350 epochs"
+NOTES           = "8s segments, 100 samples/track, cosine LR (eta_min=lr/6), per-chunk RMS norm in eval"
 
 
 # ---------------------------------------------------------------------------
