@@ -29,7 +29,8 @@ class BLSTM(nn.Module): ## Like Demuc
         self.linear = nn.Linear(2 * dim, dim) ## defaults following Demucs logic
 
     def forward(self, x):
-        x = x.permute(2,0,1)
+        x = x.permute(2,0,1).contiguous()
+        self.lstm.flatten_parameters()
         x = self.lstm(x)[0]
         x = self.linear(x)
         x = x.permute(1,2,0)
