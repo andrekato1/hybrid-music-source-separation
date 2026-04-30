@@ -28,8 +28,8 @@ def load_musdb(root: str = "data/", is_wav: bool = True) -> tuple[list, list, li
     db = musdb.DB(root=root, is_wav=is_wav)
     all_train = db.load_mus_tracks(subsets="train")
     test_tracks = db.load_mus_tracks(subsets="test")
-    train_tracks = [t for i, t in enumerate(all_train) if i not in _VAL_INDICES]
-    val_tracks = [t for i, t in enumerate(all_train) if i in _VAL_INDICES]
+    train_tracks = [t for i, t in enumerate(all_train) if i not in _VAL_INDICES][:1]  # OVERFIT: single track
+    val_tracks = [t for i, t in enumerate(all_train) if i in _VAL_INDICES][:1]
     return train_tracks, val_tracks, test_tracks
 
 
