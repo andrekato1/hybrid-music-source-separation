@@ -33,7 +33,7 @@ SEGMENT_DURATION = 6.0   # seconds
 SAMPLES_PER_TRACK = 50
 NUM_WORKERS     = 4       # set to 0 on Windows
 TARGET_SOURCE   = "vocals"
-NOTES           = "cosine annealing lr schedule, 200 epochs"
+NOTES           = "cosine annealing lr schedule, 350 epochs"
 
 
 # ---------------------------------------------------------------------------
