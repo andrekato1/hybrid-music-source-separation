@@ -1,5 +1,6 @@
 import math
 from dataclasses import dataclass
+from typing import Sequence
 
 import torch.nn.functional as F
 from torch import Tensor
@@ -24,14 +25,18 @@ class SpectrogramBranch(BaseEncDecSeparator):
     Waveform in > STFT > 2D U-Net (freq-only strides) + BiLSTM > iSTFT >
     four separated stereo waveforms out.
 
+    With the default freq_strides=(4, 4, 4, 8, 8) the encoder collapses the frequency axis all the way to a single bin at the bottleneck, so the bottleneck shape is [B, C_bottleneck, 1, T_frames]. After squeezing the singleton frequency axis this becomes [B, C_bottleneck, T_frames], aligning with the waveform branch's bottleneck for fusion.
+
     Args:
         audio_channels: stereo=2
         n_sources:      number of sources to separate
         n_fft:          STFT FFT size
-        hop_length:     STFT hop length
+        hop_length:     STFT hop length (also sets the bottleneck time
+                        resolution: T_frames = T / hop_length)
         channels:       base channel count for level 0
         depth:          number of encoder/decoder levels
-        freq_stride:    frequency stride per level
+        freq_strides:   per-level frequency strides (int or sequence of length
+                        depth). Their product determines how much the frequency axis is compressed at the bottleneck.
         lstm_layers:    BiLSTM layers at the bottleneck
     """
 
@@ -43,7 +48,7 @@ class SpectrogramBranch(BaseEncDecSeparator):
         hop_length: int = 1024,
         channels: int = 48,
         depth: int = 5,
-        freq_stride: int = 2,
+        freq_strides: Sequence[int] | int = (4, 4, 4, 8, 8),
         lstm_layers: int = 2,
     ) -> None:
         super().__init__()
@@ -51,14 +56,17 @@ class SpectrogramBranch(BaseEncDecSeparator):
         self.n_sources = n_sources
         self.n_fft = n_fft
         self.depth = depth
-        self.freq_stride = freq_stride
+        if isinstance(freq_strides, int):
+            self.freq_strides = [freq_strides] * depth
+        else:
+            self.freq_strides = list(freq_strides)
 
         self.stft = STFT(n_fft=n_fft, hop_length=hop_length)
         self.encoder = SpectrogramEncoder(
             in_channels=audio_channels * 2,     # real + imag per audio channel
             channels=channels,
             depth=depth,
-            freq_stride=freq_stride,
+            freq_strides=self.freq_strides,
             n_fft=n_fft,
             lstm_layers=lstm_layers,
         )
@@ -66,12 +74,18 @@ class SpectrogramBranch(BaseEncDecSeparator):
             channels=channels,
             out_channels=n_sources * audio_channels * 2,    # 16 for defaults
             depth=depth,
-            freq_stride=freq_stride,
+            freq_strides=self.freq_strides,
         )
+
+    def _stride_product(self) -> int:
+        total = 1
+        for s in self.freq_strides:
+            total *= s
+        return total
 
     def _padded_freq(self) -> int:
         n_freq = self.n_fft // 2 + 1
-        stride_total = self.freq_stride ** self.depth
+        stride_total = self._stride_product()
         return math.ceil(n_freq / stride_total) * stride_total
 
     def encode(self, mixture: Tensor) -> SpectrogramLatent:
@@ -83,6 +97,8 @@ class SpectrogramBranch(BaseEncDecSeparator):
         Returns:
             SpectrogramLatent carrying the bottleneck, skip connections,
             and the metadata required to invert the transform in decode.
+            With the default freq_strides the bottleneck has shape
+            [B, C_bottleneck, 1, T_frames].
         """
         wav_length = mixture.shape[-1]
 
