@@ -93,17 +93,10 @@ def evaluate(
         target = targets[target_source]  # [1, C, T], kept on CPU for museval
         T = mixture.shape[-1]
 
-        # Per-chunk RMS normalization matches training conditions: SegmentDataset
-        # feeds the model unit-RMS segments, so chunks here must also be unit-RMS.
-        # Output is rescaled by the same factor to stay on the global-track scale
-        # of the reference target.
         chunks = [mixture[..., i:i + chunk_samples] for i in range(0, T, chunk_samples)]
-        estimates = []
-        for chunk in chunks:
-            rms = chunk.pow(2).mean().sqrt().clamp(min=1e-8)
-            est = model(chunk / rms)[target_source] * rms
-            estimates.append(est)
-        estimate = torch.cat(estimates, dim=-1).cpu()  # [1, C, T]
+        estimate = torch.cat(
+            [model(chunk)[target_source] for chunk in chunks], dim=-1
+        ).cpu()  # [1, C, T]
 
         # museval expects numpy arrays of shape [T, C]
         est_np = estimate[0].T.numpy()   # [T, C]
@@ -155,8 +148,7 @@ def train(
 
     model = model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=n_epochs, eta_min=lr / 6)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=n_epochs, eta_min=1e-5)
     loss_fn = SISDRLoss()
 
     config = ExperimentConfig(
