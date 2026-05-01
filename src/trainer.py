@@ -86,17 +86,12 @@ def evaluate(
     model.eval()
     sdrs = []
 
-    chunk_samples = int(30 * 44100)  # 30s chunks to avoid cuDNN LSTM sequence length limit
-
     for mixture, targets, track_name in tqdm(loader, desc="  eval", leave=False):
         mixture = mixture.to(device)  # [1, C, T]
         target = targets[target_source]  # [1, C, T], kept on CPU for museval
-        T = mixture.shape[-1]
 
-        chunks = [mixture[..., i:i + chunk_samples] for i in range(0, T, chunk_samples)]
-        estimate = torch.cat(
-            [model(chunk)[target_source] for chunk in chunks], dim=-1
-        ).cpu()  # [1, C, T]
+        estimates = model(mixture)
+        estimate = estimates[target_source].cpu()  # [1, C, T]
 
         # museval expects numpy arrays of shape [T, C]
         est_np = estimate[0].T.numpy()   # [T, C]
@@ -148,7 +143,6 @@ def train(
 
     model = model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=n_epochs, eta_min=1e-5)
     loss_fn = SISDRLoss()
 
     config = ExperimentConfig(
@@ -178,8 +172,6 @@ def train(
             logger.maybe_save_best(model, optimizer, epoch, val_sdr)
         else:
             logger.log_epoch(epoch, train_loss, float("nan"))
-
-        scheduler.step()
 
     logger.finish(model, optimizer, n_epochs)
     return logger
