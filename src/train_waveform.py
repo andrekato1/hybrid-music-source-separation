@@ -34,7 +34,7 @@ SAMPLES_PER_TRACK = 50
 NUM_WORKERS     = 4       # set to 0 on Windows
 TARGET_SOURCE   = "drums"
 BASE_CHANNELS   = 32      # 5-level encoder → bottleneck channels = 16*32 = 512 (matches spectrogram branch)
-LSTM_DIM        = 320     # tuned to bring total param count near Andre's 10.6M
+LSTM_DIM        = 320     # tuned to bring total param count near spectogram 10.6M
 NOTES           = "drums target, 5-level encoder for hybrid bottleneck alignment ([B,512,T/1024])"
 
 
