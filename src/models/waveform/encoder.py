@@ -14,34 +14,35 @@ from torch import nn
 
 
 class DemucsEncoder(nn.Module):
-    def __init__(self, in_channels=2): # 2 channels for stereo
+    def __init__(self, in_channels=2, base_channels=64):
         super().__init__()
+        C = base_channels
 
         self.layer1 = nn.Sequential(
-            nn.Conv1d(in_channels, 64, kernel_size=8, stride=4),
+            nn.Conv1d(in_channels, C, kernel_size=8, stride=4),
             nn.ReLU(),
-            nn.Conv1d(64, 128, kernel_size=1, stride=1),
+            nn.Conv1d(C, 2*C, kernel_size=1, stride=1),
             nn.GLU(dim=1),
         )
 
         self.layer2 = nn.Sequential(
-            nn.Conv1d(64, 128, kernel_size=8, stride=4),
+            nn.Conv1d(C, 2*C, kernel_size=8, stride=4),
             nn.ReLU(),
-            nn.Conv1d(128, 256, kernel_size=1, stride=1),
+            nn.Conv1d(2*C, 4*C, kernel_size=1, stride=1),
             nn.GLU(dim=1),
         )
 
         self.layer3 = nn.Sequential(
-            nn.Conv1d(128, 256, kernel_size=8, stride=4),
+            nn.Conv1d(2*C, 4*C, kernel_size=8, stride=4),
             nn.ReLU(),
-            nn.Conv1d(256, 512, kernel_size=1, stride=1),
+            nn.Conv1d(4*C, 8*C, kernel_size=1, stride=1),
             nn.GLU(dim=1),
         )
 
         self.layer4 = nn.Sequential(
-            nn.Conv1d(256, 512, kernel_size=8, stride=4),
+            nn.Conv1d(4*C, 8*C, kernel_size=8, stride=4),
             nn.ReLU(),
-            nn.Conv1d(512, 1024, kernel_size=1, stride=1),
+            nn.Conv1d(8*C, 16*C, kernel_size=1, stride=1),
             nn.GLU(dim=1),
         )
 

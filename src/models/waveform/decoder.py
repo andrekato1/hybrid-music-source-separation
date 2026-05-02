@@ -28,35 +28,36 @@ def center_trim(tensor, reference):
     return tensor
 
 class DemucsDecoder(nn.Module):
-    def __init__(self, in_channels=2, context=3):
+    def __init__(self, in_channels=2, base_channels=64, context=3):
         super().__init__()
+        C = base_channels
 
         # going the opposite direction to encoder
         self.layer4 = nn.Sequential(
-            nn.Conv1d(512, 1024, kernel_size=context, stride=1),
+            nn.Conv1d(8*C, 16*C, kernel_size=context, stride=1),
             nn.GLU(dim=1),
-            nn.ConvTranspose1d(512, 256, kernel_size=8, stride=4),
+            nn.ConvTranspose1d(8*C, 4*C, kernel_size=8, stride=4),
             nn.ReLU(),
         )
 
         self.layer3 = nn.Sequential(
-            nn.Conv1d(256, 512, kernel_size=context, stride=1),
+            nn.Conv1d(4*C, 8*C, kernel_size=context, stride=1),
             nn.GLU(dim=1),
-            nn.ConvTranspose1d(256, 128, kernel_size=8, stride=4),
+            nn.ConvTranspose1d(4*C, 2*C, kernel_size=8, stride=4),
             nn.ReLU(),
         )
 
         self.layer2 = nn.Sequential(
-            nn.Conv1d(128, 256, kernel_size=context, stride=1),
+            nn.Conv1d(2*C, 4*C, kernel_size=context, stride=1),
             nn.GLU(dim=1),
-            nn.ConvTranspose1d(128, 64, kernel_size=8, stride=4),
+            nn.ConvTranspose1d(2*C, C, kernel_size=8, stride=4),
             nn.ReLU(),
         )
 
         self.layer1 = nn.Sequential(
-            nn.Conv1d(64, 128, kernel_size=context, stride=1),
+            nn.Conv1d(C, 2*C, kernel_size=context, stride=1),
             nn.GLU(dim=1),
-            nn.ConvTranspose1d(64, in_channels, kernel_size=8, stride=4),
+            nn.ConvTranspose1d(C, in_channels, kernel_size=8, stride=4),
         )
 
     def forward(self, x, skips):

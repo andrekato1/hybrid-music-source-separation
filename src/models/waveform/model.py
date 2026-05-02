@@ -31,23 +31,30 @@ class BLSTM(nn.Module): ## Like Demuc
     def forward(self, x):
         x = x.permute(2,0,1)
         x = self.lstm(x)[0]
-       # x = self.linear(x)
+        x = self.linear(x)
         x = x.permute(1,2,0)
         return x
 
 class WaveformModel(nn.Module):
-    def __init__(self, audio_channels=2, lstm_layers=2):
+    def __init__(self, audio_channels=2, lstm_layers=2, base_channels=64):
         """
         :param audio_channels: 1 for mono, 2 for stereo
-        :param lstm_layers: number of bidirectiional LSTM layers in bottleneck
+        :param lstm_layers: number of bidirectional LSTM layers in bottleneck
+        :param base_channels: base channel width for encoder/decoder (bottleneck = 8 * base_channels)
         """
 
         super().__init__()
 
         self.audio_channels = audio_channels
-        self.encoder = DemucsEncoder(in_channels = audio_channels)
-        #self.lstm = BLSTM(dim=512, layers=lstm_layers)
-        self.decoder = DemucsDecoder(in_channels=audio_channels)
+        bottleneck = 8 * base_channels
+
+        self.encoder = DemucsEncoder(in_channels=audio_channels, base_channels=base_channels)
+
+        self.pre_lstm  = nn.Conv1d(bottleneck, 256, kernel_size=1)
+        self.lstm      = BLSTM(dim=256, layers=lstm_layers)
+        self.post_lstm = nn.Conv1d(256, bottleneck, kernel_size=1)
+
+        self.decoder = DemucsDecoder(in_channels=audio_channels, base_channels=base_channels)
 
     # Leveraged from Demucs: https://github.com/facebookresearch/demucs/blob/v2/demucs/model.py
     def valid_length(self, length):
@@ -72,7 +79,9 @@ class WaveformModel(nn.Module):
         x, skips = self.encoder(x)
 
         # bottleneck
-        #x = self.lstm(x)
+        x = self.pre_lstm(x)
+        x = self.lstm(x)
+        x = self.post_lstm(x)
 
         # decode
         x = self.decoder(x, skips)
