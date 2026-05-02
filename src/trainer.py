@@ -99,7 +99,10 @@ def separate_in_chunks(
         if actual < chunk_samples:
             chunk = F.pad(chunk, (0, chunk_samples - actual))
 
-        estimates = model(chunk.to(device))
+        # Normalise each chunk to RMS=1 to match training-time SegmentDataset
+        # normalization. The model was never trained on inputs outside this scale.
+        chunk_rms = chunk.pow(2).mean().sqrt().clamp(min=1e-8)
+        estimates = model((chunk / chunk_rms).to(device))
 
         if out is None:
             out = {src: torch.zeros(1, C, T) for src in estimates}
@@ -108,7 +111,7 @@ def separate_in_chunks(
         is_last  = chunk_end >= T
 
         for src, est in estimates.items():
-            seg = est.cpu()[:, :, :actual].clone()
+            seg = (est.cpu() * chunk_rms)[:, :, :actual].clone()
             if not is_first and overlap_samples > 0:
                 ov = min(overlap_samples, actual)
                 seg[:, :, :ov] *= fade_in[:ov].reshape(1, 1, -1)
