@@ -1,6 +1,6 @@
 import torch
-print(f"CUDA available: {torch.cuda.is_available()}")
-print(f"Device: {torch.cuda.get_device_name(0)}")
+#print(f"CUDA available: {torch.cuda.is_available()}")
+#print(f"Device: {torch.cuda.get_device_name(0)}")
 from src.data.dataset import get_dataloaders
 from src.models.waveform.model import WaveformModel
 from src.trainer import train
@@ -25,14 +25,15 @@ from src.trainer import train
 # ---------------------------------------------------------------------------
 
 ROOT            = "data/"
-EXPERIMENT_NAME = "waveform_run_01"  # update per run
-N_EPOCHS        = 100
+EXPERIMENT_NAME = "waveform_blstm_8s_b32_s100_cosine"  # update per run
+N_EPOCHS        = 350
 LEARNING_RATE   = 3e-4
-BATCH_SIZE      = 8
-SEGMENT_DURATION = 6.0   # seconds
-SAMPLES_PER_TRACK = 2
+BATCH_SIZE      = 32
+SEGMENT_DURATION = 8.0   # seconds
+SAMPLES_PER_TRACK = 100
+NUM_WORKERS     = 4       # set to 0 on Windows
 TARGET_SOURCE   = "vocals"
-NOTES           = ""
+NOTES           = "8s segments, 100 samples/track, cosine LR (eta_min=lr/6), per-chunk RMS norm in eval"
 
 
 # ---------------------------------------------------------------------------
@@ -47,9 +48,11 @@ if __name__ == "__main__":
         segment_duration=SEGMENT_DURATION,
         batch_size=BATCH_SIZE,
         samples_per_track=SAMPLES_PER_TRACK,
+        num_workers=NUM_WORKERS,
+        sources=["vocals"],
     )
 
-    model = WaveformModel()
+    model = WaveformModel(base_channels=44)
 
     train(
         model=model,
@@ -59,5 +62,6 @@ if __name__ == "__main__":
         n_epochs=N_EPOCHS,
         lr=LEARNING_RATE,
         target_source=TARGET_SOURCE,
+        val_every_n_epochs=20,
         notes=NOTES,
     )

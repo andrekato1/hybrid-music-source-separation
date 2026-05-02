@@ -1,3 +1,6 @@
+import os
+
+import soundfile as sf
 import torch
 from torch import Tensor
 from torch.utils.data import DataLoader, Dataset
@@ -53,7 +56,11 @@ class SegmentDataset(Dataset):
         samples_per_track: int = 50,
         normalize: bool = True,
     ) -> None:
-        self.tracks = tracks
+        # Store (path, total_samples) tuples — no shared mutable state, safe for num_workers > 0
+        self.track_info = [
+            (os.path.dirname(track.path), int(track.duration * sample_rate))
+            for track in tracks
+        ]
         self.segment_length = int(segment_duration * sample_rate)
         self.sample_rate = sample_rate
         self.sources = sources
@@ -61,32 +68,22 @@ class SegmentDataset(Dataset):
         self.normalize = normalize
 
     def __len__(self) -> int:
-        return len(self.tracks) * self.samples_per_track
+        return len(self.track_info) * self.samples_per_track
 
     def __getitem__(self, idx: int) -> tuple[Tensor, dict[str, Tensor]]:
-        track = self.tracks[idx % len(self.tracks)]
-        total_samples = int(track.duration * self.sample_rate)
-
-        # torch.randint is seeded by torch.manual_seed, keeping runs reproducible
+        track_path, total_samples = self.track_info[idx % len(self.track_info)]
         start = torch.randint(0, total_samples - self.segment_length, (1,)).item()
+        stop = start + self.segment_length
 
-        # Load only the segment we need — avoids reading the full track into memory.
-        # Note: chunk_start/chunk_duration are read by musdb before calling track.audio,
-        # so we set them here and immediately read the audio before any other worker
-        # can overwrite them. Safe with num_workers=0; see note in get_dataloaders.
-        track.chunk_start = start / self.sample_rate
-        track.chunk_duration = self.segment_length / self.sample_rate
+        def read(filename: str) -> Tensor:
+            data, _ = sf.read(os.path.join(track_path, filename), start=start, stop=stop,
+                              dtype='float32', always_2d=True)
+            return torch.from_numpy(data.T)  # [C, T]
 
-        mixture = torch.from_numpy(track.audio.T).float()  # [C, T]
-        targets = {
-            src: torch.from_numpy(track.targets[src].audio.T).float()
-            for src in self.sources
-        }
+        mixture = read('mixture.wav')
+        targets = {src: read(f'{src}.wav') for src in self.sources}
 
         if self.normalize:
-            # RMS-normalise using the mixture's energy.
-            # The same scale factor is applied to all targets so the
-            # mixture-to-source relationship the model must learn is preserved.
             rms = mixture.pow(2).mean().sqrt().clamp(min=1e-8)
             mixture = mixture / rms
             targets = {src: t / rms for src, t in targets.items()}
@@ -138,7 +135,7 @@ def get_dataloaders(
     batch_size: int = 8,
     samples_per_track: int = 50,
     normalize: bool = True,
-    num_workers: int = 0,  # keep at 0 on Windows; increase on Linux
+    num_workers: int = 4,  # keep at 0 on Windows; set to 4+ on Linux
 ) -> tuple[DataLoader, DataLoader, DataLoader]:
     """Return (train_loader, val_loader, test_loader).
 
@@ -147,10 +144,6 @@ def get_dataloaders(
 
     For faster loading, convert the dataset to WAV first (see convert_to_wav.py)
     and pass is_wav=True. This is strongly recommended for real training runs.
-
-    Warning: num_workers > 0 is unsafe with the current chunk_start/chunk_duration
-    approach since multiple workers share the same track objects. On Linux, keep
-    num_workers=0 or refactor to load audio without mutating the track.
     """
     train_tracks, val_tracks, test_tracks = load_musdb(root, is_wav)
 
@@ -159,17 +152,19 @@ def get_dataloaders(
         batch_size=batch_size,
         shuffle=True,
         num_workers=num_workers,
+        pin_memory=True,
+        persistent_workers=num_workers > 0,
     )
     val_loader = DataLoader(
         FullTrackDataset(val_tracks, sources, normalize),
         batch_size=1,
         shuffle=False,
-        num_workers=num_workers,
+        num_workers=0,
     )
     test_loader = DataLoader(
         FullTrackDataset(test_tracks, sources, normalize),
         batch_size=1,
         shuffle=False,
-        num_workers=num_workers,
+        num_workers=0,
     )
     return train_loader, val_loader, test_loader
