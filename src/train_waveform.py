@@ -25,15 +25,17 @@ from src.trainer import train
 # ---------------------------------------------------------------------------
 
 ROOT            = "data/"
-EXPERIMENT_NAME = "waveform_blstm_8s_b32_s100_cosine"  # update per run
+EXPERIMENT_NAME = "waveform_blstm_5lvl_drums_4s_b32_s50_350ep"  # 5-level encoder for hybrid alignment
 N_EPOCHS        = 350
 LEARNING_RATE   = 3e-4
-BATCH_SIZE      = 32
-SEGMENT_DURATION = 8.0   # seconds
-SAMPLES_PER_TRACK = 100
+BATCH_SIZE      = 8
+SEGMENT_DURATION = 4.0   # seconds
+SAMPLES_PER_TRACK = 50
 NUM_WORKERS     = 4       # set to 0 on Windows
-TARGET_SOURCE   = "vocals"
-NOTES           = "8s segments, 100 samples/track, cosine LR (eta_min=lr/6), per-chunk RMS norm in eval"
+TARGET_SOURCE   = "drums"
+BASE_CHANNELS   = 32      # 5-level encoder → bottleneck channels = 16*32 = 512 (matches spectrogram branch)
+LSTM_DIM        = 320     # tuned to bring total param count near spectogram 10.6M
+NOTES           = "drums target, 5-level encoder for hybrid bottleneck alignment ([B,512,T/1024])"
 
 
 # ---------------------------------------------------------------------------
@@ -49,10 +51,10 @@ if __name__ == "__main__":
         batch_size=BATCH_SIZE,
         samples_per_track=SAMPLES_PER_TRACK,
         num_workers=NUM_WORKERS,
-        sources=["vocals"],
+        sources=[TARGET_SOURCE],
     )
 
-    model = WaveformModel(base_channels=44)
+    model = WaveformModel(base_channels=BASE_CHANNELS, lstm_dim=LSTM_DIM, target_source=TARGET_SOURCE)
 
     train(
         model=model,
@@ -62,6 +64,6 @@ if __name__ == "__main__":
         n_epochs=N_EPOCHS,
         lr=LEARNING_RATE,
         target_source=TARGET_SOURCE,
-        val_every_n_epochs=20,
+        val_every_n_epochs=5,
         notes=NOTES,
     )

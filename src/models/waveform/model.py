@@ -36,33 +36,39 @@ class BLSTM(nn.Module): ## Like Demuc
         return x
 
 class WaveformModel(nn.Module):
-    def __init__(self, audio_channels=2, lstm_layers=2, base_channels=64):
+    def __init__(self, audio_channels=2, lstm_layers=2, base_channels=32, lstm_dim=320, target_source="vocals"):
         """
         :param audio_channels: 1 for mono, 2 for stereo
         :param lstm_layers: number of bidirectional LSTM layers in bottleneck
-        :param base_channels: base channel width for encoder/decoder (bottleneck = 8 * base_channels)
+        :param base_channels: base channel width for encoder/decoder (bottleneck = 16 * base_channels)
+        :param lstm_dim: hidden size of the bottleneck BLSTM (sets the bulk of the param count)
+        :param target_source: which stem this model separates ("vocals", "drums", "bass", "other")
         """
 
         super().__init__()
 
         self.audio_channels = audio_channels
-        bottleneck = 8 * base_channels
+        self.target_source = target_source
+        # 5 encoder/decoder levels with stride 4 → bottleneck length = T/1024.
+        # Channels at the bottleneck = 16 * base_channels (e.g. 32 → 512 channels)
+        # which matches the spectrogram branch's bottleneck width for hybrid fusion.
+        bottleneck = 16 * base_channels
 
         self.encoder = DemucsEncoder(in_channels=audio_channels, base_channels=base_channels)
 
-        self.pre_lstm  = nn.Conv1d(bottleneck, 256, kernel_size=1)
-        self.lstm      = BLSTM(dim=256, layers=lstm_layers)
-        self.post_lstm = nn.Conv1d(256, bottleneck, kernel_size=1)
+        self.pre_lstm  = nn.Conv1d(bottleneck, lstm_dim, kernel_size=1)
+        self.lstm      = BLSTM(dim=lstm_dim, layers=lstm_layers)
+        self.post_lstm = nn.Conv1d(lstm_dim, bottleneck, kernel_size=1)
 
         self.decoder = DemucsDecoder(in_channels=audio_channels, base_channels=base_channels)
 
     # Leveraged from Demucs: https://github.com/facebookresearch/demucs/blob/v2/demucs/model.py
     def valid_length(self, length):
         """Return the nearest valid length >= `length` so the decoder output matches exactly."""
-        for _ in range(4):
+        for _ in range(5):
             length = math.ceil((length - 8) / 4) + 1
             length += 2  # context - 1
-        for _ in range(4):
+        for _ in range(5):
             length = (length - 1) * 4 + 8
         return int(length)
 
@@ -86,5 +92,5 @@ class WaveformModel(nn.Module):
         # decode
         x = self.decoder(x, skips)
 
-        return {"vocals": x[..., :length]}
+        return {self.target_source: x[..., :length]}
 

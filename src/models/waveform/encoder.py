@@ -46,11 +46,21 @@ class DemucsEncoder(nn.Module):
             nn.GLU(dim=1),
         )
 
+        # 5th level so the bottleneck reaches T/1024 (matches the spectrogram branch
+        # for hybrid fusion). Output channels = 16*C.
+        self.layer5 = nn.Sequential(
+            nn.Conv1d(8*C, 16*C, kernel_size=8, stride=4),
+            nn.ReLU(),
+            nn.Conv1d(16*C, 32*C, kernel_size=1, stride=1),
+            nn.GLU(dim=1),
+        )
+
     def forward(self, x):
         skip1 = self.layer1(x)
         skip2 = self.layer2(skip1)
         skip3 = self.layer3(skip2)
         skip4 = self.layer4(skip3)
+        skip5 = self.layer5(skip4)
 
-        return skip4, [skip1, skip2, skip3, skip4]
+        return skip5, [skip1, skip2, skip3, skip4, skip5]
 
