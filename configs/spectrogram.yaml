@@ -1,5 +1,5 @@
 experiment:
-  name: "spectrogram_run_02"
+  name: "spectrogram_run_03"
   notes: ""
   seed: 42
 
@@ -23,7 +23,7 @@ model:
   lstm_layers: 1
 
 training:
-  n_epochs: 20
+  n_epochs: 50
   lr: 3.0e-4
-  target_source: "vocals"
+  target_source: "drums"
   val_every_n_epochs: 5
