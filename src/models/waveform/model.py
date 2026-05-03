@@ -10,13 +10,21 @@ Model inspired by
 }
 """
 import math
+from dataclasses import dataclass
 
 import torch
 import torch.nn.functional as F
-from torch import nn
+from torch import Tensor, nn
 
+from src.models.base import BaseEncDecSeparator, Latent
 from .encoder import DemucsEncoder
 from .decoder import DemucsDecoder
+
+
+@dataclass
+class WaveformLatent(Latent):
+    mixture: Tensor | None = None
+    length: int = 0
 
 class BLSTM(nn.Module): ## Like Demuc
     def __init__(self, dim, layers=2):
@@ -35,7 +43,7 @@ class BLSTM(nn.Module): ## Like Demuc
         x = x.permute(1,2,0)
         return x
 
-class WaveformModel(nn.Module):
+class WaveformModel(BaseEncDecSeparator):
     def __init__(self, audio_channels=2, lstm_layers=2, base_channels=32, lstm_dim=320, target_source="vocals"):
         """
         :param audio_channels: 1 for mono, 2 for stereo
@@ -72,27 +80,21 @@ class WaveformModel(nn.Module):
             length = (length - 1) * 4 + 8
         return int(length)
 
-    def forward(self, x):
-        """
-
-        Input: Mixed audio of shape (batch, audio_channels, time)
-        Returns: Tensor separated sources of shape (batch, 1, audio_channels, time)
-        """
-        length = x.shape[-1]
-        mixture = x
-        x = F.pad(x, (0, self.valid_length(length) - length))
-
-        # encode
+    def encode(self, mixture: Tensor) -> WaveformLatent:
+        length = mixture.shape[-1]
+        x = F.pad(mixture, (0, self.valid_length(length) - length))
         x, skips = self.encoder(x)
-
-        # bottleneck
         x = self.pre_lstm(x)
         x = self.lstm(x)
         x = self.post_lstm(x)
+        return WaveformLatent(bottleneck=x, skips=skips, mixture=mixture, length=length)
 
-        # decode
-        x = self.decoder(x, skips)
-
-        x = x[..., :length].tanh() * mixture
+    def decode(self, latent: Latent) -> dict[str, Tensor]:
+        assert isinstance(latent, WaveformLatent)
+        x = self.decoder(latent.bottleneck, latent.skips)
+        x = x[..., :latent.length].tanh() * latent.mixture
         return {self.target_source: x}
+
+    def forward(self, mixture: Tensor) -> dict[str, Tensor]:
+        return self.decode(self.encode(mixture))
 
