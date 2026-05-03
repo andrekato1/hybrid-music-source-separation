@@ -143,7 +143,7 @@ def train(
 
     model = model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=n_epochs, eta_min=lr / 6)
+    #scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=n_epochs, eta_min=lr / 6)
     loss_fn = SISDRLoss()
 
     config = ExperimentConfig(
@@ -174,7 +174,7 @@ def train(
         else:
             logger.log_epoch(epoch, train_loss, float("nan"))
 
-        scheduler.step()
+        #scheduler.step()
 
     logger.finish(model, optimizer, n_epochs)
     return logger
