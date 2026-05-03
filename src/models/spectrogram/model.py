@@ -15,8 +15,9 @@ from src.models.spectrogram.stft import STFT
 @dataclass
 class SpectrogramLatent(Latent):
     """Extends Latent with the metadata needed to invert the STFT."""
-    n_freq_orig: int = 0    # F before frequency padding  (= n_fft // 2 + 1)
-    wav_length: int = 0     # original waveform length T for torch.istft
+    n_freq_orig: int = 0              # F before frequency padding  (= n_fft // 2 + 1)
+    wav_length: int = 0               # original waveform length T for torch.istft
+    mixture_spec: Tensor | None = None  # [B, C*2, F_orig, T_frames] for masking
 
 
 class SpectrogramBranch(BaseEncDecSeparator):
@@ -104,6 +105,7 @@ class SpectrogramBranch(BaseEncDecSeparator):
 
         spec = self.stft.encode(mixture)            # [B, C*2, F, T_frames]
         n_freq_orig = spec.shape[2]
+        mixture_spec = spec                         # save before frequency padding
 
         # Pad the frequency axis so every level divides evenly
         pad_amt = self._padded_freq() - n_freq_orig
@@ -118,6 +120,7 @@ class SpectrogramBranch(BaseEncDecSeparator):
             skips=skips,
             n_freq_orig=n_freq_orig,
             wav_length=wav_length,
+            mixture_spec=mixture_spec,
         )
 
     def decode(self, latent: Latent) -> dict[str, Tensor]:
@@ -141,6 +144,12 @@ class SpectrogramBranch(BaseEncDecSeparator):
         # Reshape so each source is a separate "batch item" for iSTFT
         B, _, F_orig, T_frames = x.shape
         x = x.reshape(B * self.n_sources, self.audio_channels * 2, F_orig, T_frames)
+
+        # sigmoid gates how much of each frequency bin goes to each source
+        # (should fix the near-silence problem)
+        mix = latent.mixture_spec.repeat_interleave(self.n_sources, dim=0)
+        x = x.sigmoid() * mix
+
         waveforms = self.stft.decode(x, latent.wav_length)          # [B*n_sources, C, T]
         waveforms = waveforms.reshape(B, self.n_sources, self.audio_channels, latent.wav_length)
 

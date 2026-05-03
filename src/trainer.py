@@ -23,7 +23,7 @@ from torch import Tensor
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from .losses import MixedLoss
+from .losses import SISDRLoss
 from .metrics import compute_sdr
 from .experiment import ExperimentConfig, ExperimentLogger, count_parameters
 
@@ -209,7 +209,7 @@ def train(
 
     model = model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-    loss_fn = MixedLoss()
+    loss_fn = SISDRLoss()
 
     config = ExperimentConfig(
         model_name=model.__class__.__name__,
