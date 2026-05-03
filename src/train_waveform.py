@@ -25,7 +25,7 @@ from src.trainer import train
 # ---------------------------------------------------------------------------
 
 ROOT            = "data/"
-EXPERIMENT_NAME = "waveform_blstm_5lvl_drums_4s_b32_s50_50ep"  # 5-level encoder for hybrid alignment
+EXPERIMENT_NAME = "waveform_blstm_5lvl_drums_4s_b32_s50_50ep_magpenalty"
 N_EPOCHS        = 50
 LEARNING_RATE   = 3e-4
 BATCH_SIZE      = 8
@@ -35,7 +35,7 @@ NUM_WORKERS     = 4       # set to 0 on Windows
 TARGET_SOURCE   = "drums"
 BASE_CHANNELS   = 32      # 5-level encoder → bottleneck channels = 16*32 = 512 (matches spectrogram branch)
 LSTM_DIM        = 320     # tuned to bring total param count near spectogram 10.6M
-NOTES           = "drums target, 5-level encoder for hybrid bottleneck alignment ([B,512,T/1024])"
+NOTES           = "drums, 5-level encoder, SI-SDR + 0.1 * (rms_est - rms_tgt)^2 to anchor output scale and fix the muted-output / SDR≈0 issue"
 
 
 # ---------------------------------------------------------------------------

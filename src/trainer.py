@@ -23,7 +23,7 @@ from torch import Tensor
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from .losses import SISDRLoss
+from .losses import SISDRLoss, SISDRWithMagnitudeLoss
 from .metrics import compute_sdr
 from .experiment import ExperimentConfig, ExperimentLogger, count_parameters
 
@@ -209,7 +209,7 @@ def train(
 
     model = model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-    loss_fn = SISDRLoss()
+    loss_fn = SISDRWithMagnitudeLoss(mag_weight=0.1)
 
     config = ExperimentConfig(
         model_name=model.__class__.__name__,
