@@ -79,6 +79,7 @@ class WaveformModel(nn.Module):
         Returns: Tensor separated sources of shape (batch, 1, audio_channels, time)
         """
         length = x.shape[-1]
+        mixture = x
         x = F.pad(x, (0, self.valid_length(length) - length))
 
         # encode
@@ -92,5 +93,6 @@ class WaveformModel(nn.Module):
         # decode
         x = self.decoder(x, skips)
 
-        return {self.target_source: x[..., :length]}
+        x = x[..., :length].tanh() * mixture
+        return {self.target_source: x}
 

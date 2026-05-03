@@ -25,7 +25,7 @@ from src.trainer import train
 # ---------------------------------------------------------------------------
 
 ROOT            = "data/"
-EXPERIMENT_NAME = "waveform_blstm_5lvl_drums_4s_b32_s50_50ep_magpenalty"
+EXPERIMENT_NAME = "waveform_blstm_5lvl_drums_4s_b32_s50_50ep_tanhgate"
 N_EPOCHS        = 50
 LEARNING_RATE   = 3e-4
 BATCH_SIZE      = 8
@@ -35,7 +35,7 @@ NUM_WORKERS     = 4       # set to 0 on Windows
 TARGET_SOURCE   = "drums"
 BASE_CHANNELS   = 32      # 5-level encoder → bottleneck channels = 16*32 = 512 (matches spectrogram branch)
 LSTM_DIM        = 320     # tuned to bring total param count near spectogram 10.6M
-NOTES           = "drums, 5-level encoder, SI-SDR + 0.1 * (rms_est - rms_tgt)^2 to anchor output scale and fix the muted-output / SDR≈0 issue"
+NOTES           = "drums, 5-level encoder, plain SI-SDR loss; output gated as tanh(decoder_out) * mixture to anchor output amplitude to mixture amplitude"
 
 
 # ---------------------------------------------------------------------------

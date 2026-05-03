@@ -209,7 +209,7 @@ def train(
 
     model = model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-    loss_fn = SISDRWithMagnitudeLoss(mag_weight=0.1)
+    loss_fn = SISDRLoss()
 
     config = ExperimentConfig(
         model_name=model.__class__.__name__,
