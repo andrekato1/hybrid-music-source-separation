@@ -1,0 +1,29 @@
+experiment:
+  name: "spectrogram_run_05"
+  notes: ""
+  seed: 42
+
+data:
+  root: "data/"
+  is_wav: true
+  segment_duration: 4.0
+  batch_size: 8
+  samples_per_track: 50
+  normalize: true
+  num_workers: 6
+
+model:
+  audio_channels: 2
+  n_sources: 4
+  n_fft: 4096
+  hop_length: 1024
+  channels: 36
+  depth: 5
+  freq_strides: [4, 4, 4, 8, 8]   # product = 4096; pads 2049 freq bins to 4096 and crushes to 1 at the bottleneck
+  lstm_layers: 1
+
+training:
+  n_epochs: 50
+  lr: 3.0e-4
+  target_source: "drums"
+  val_every_n_epochs: 5
