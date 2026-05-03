@@ -80,6 +80,7 @@ class WaveformModel(nn.Module):
         """
         length = x.shape[-1]
         x = F.pad(x, (0, self.valid_length(length) - length))
+        mixture = x
 
         # encode
         x, skips = self.encoder(x)
@@ -92,5 +93,6 @@ class WaveformModel(nn.Module):
         # decode
         x = self.decoder(x, skips)
 
+        x = x.sigmoid() * mixture
         return {self.target_source: x[..., :length]}
 
