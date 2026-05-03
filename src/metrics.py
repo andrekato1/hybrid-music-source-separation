@@ -18,11 +18,6 @@ def compute_sdr(estimate: np.ndarray, reference: np.ndarray) -> float:
     """
     Compute median SDR for a single source using museval.
 
-    The estimate is oracle-rescaled before scoring (debugging purposes)
-    This makes the metric equivalent to SI-SDR expressed in SDR units, which
-    is consistent with the SI-SDR training objective and avoids penalizing the
-    model for output amplitude.
-
     Args:
         estimate:  numpy array [T, C] — model output
         reference: numpy array [T, C] — ground truth
@@ -31,9 +26,6 @@ def compute_sdr(estimate: np.ndarray, reference: np.ndarray) -> float:
         Median SDR in dB over all evaluated frames (NaN frames excluded).
     """
     import museval
-
-    alpha = (estimate * reference).sum() / ((estimate * estimate).sum() + 1e-8)
-    estimate = alpha * estimate
 
     # museval.evaluate expects [n_sources, T, C] — wrap single source in batch dim
     scores = museval.evaluate(
