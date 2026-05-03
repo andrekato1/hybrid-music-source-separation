@@ -141,6 +141,11 @@ def train(
     if device is None:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+    if device.type == "cuda":
+        print(f"Using device: cuda ({torch.cuda.get_device_name(0)})")
+    else:
+        print("Using device: cpu — CUDA not available")
+
     model = model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     loss_fn = SISDRLoss()
