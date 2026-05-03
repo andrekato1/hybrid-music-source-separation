@@ -16,7 +16,7 @@ import torch.nn.functional as F
 from torch import nn
 
 from .encoder import DemucsEncoder
-from .decoder import DemucsDecoder, center_trim
+from .decoder import DemucsDecoder
 
 class BLSTM(nn.Module): ## Like Demuc
     def __init__(self, dim, layers=2):
@@ -80,7 +80,6 @@ class WaveformModel(nn.Module):
         """
         length = x.shape[-1]
         x = F.pad(x, (0, self.valid_length(length) - length))
-        mixture = x
 
         # encode
         x, skips = self.encoder(x)
@@ -93,6 +92,5 @@ class WaveformModel(nn.Module):
         # decode
         x = self.decoder(x, skips)
 
-        x = x.sigmoid() * center_trim(mixture, x)
         return {self.target_source: x[..., :length]}
 

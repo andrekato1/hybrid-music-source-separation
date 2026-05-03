@@ -1,4 +1,5 @@
 import torch
+import torch.nn as nn
 #print(f"CUDA available: {torch.cuda.is_available()}")
 #print(f"Device: {torch.cuda.get_device_name(0)}")
 from src.data.dataset import get_dataloaders
@@ -66,4 +67,5 @@ if __name__ == "__main__":
         target_source=TARGET_SOURCE,
         val_every_n_epochs=5,
         notes=NOTES,
+        loss_fn=nn.L1Loss(),
     )
