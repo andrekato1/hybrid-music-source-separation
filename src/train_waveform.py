@@ -26,7 +26,7 @@ from src.trainer import train
 
 ROOT            = "data/"
 EXPERIMENT_NAME = "waveform_blstm_5lvl_drums_4s_b32_s50_350ep"  # 5-level encoder for hybrid alignment
-N_EPOCHS        = 350
+N_EPOCHS        = 50
 LEARNING_RATE   = 3e-4
 BATCH_SIZE      = 8
 SEGMENT_DURATION = 4.0   # seconds
