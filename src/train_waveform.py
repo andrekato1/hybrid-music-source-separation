@@ -1,4 +1,5 @@
 import torch
+import torch.nn as nn
 #print(f"CUDA available: {torch.cuda.is_available()}")
 #print(f"Device: {torch.cuda.get_device_name(0)}")
 from src.data.dataset import get_dataloaders
@@ -25,7 +26,7 @@ from src.trainer import train
 # ---------------------------------------------------------------------------
 
 ROOT            = "data/"
-EXPERIMENT_NAME = "waveform_blstm_5lvl_drums_4s_b32_s50_50ep_tanhgate"
+EXPERIMENT_NAME = "waveform_blstm_5lvl_drums_4s_b8_s50_50ep_l1"
 N_EPOCHS        = 50
 LEARNING_RATE   = 3e-4
 BATCH_SIZE      = 8
@@ -35,7 +36,7 @@ NUM_WORKERS     = 4       # set to 0 on Windows
 TARGET_SOURCE   = "drums"
 BASE_CHANNELS   = 32      # 5-level encoder → bottleneck channels = 16*32 = 512 (matches spectrogram branch)
 LSTM_DIM        = 320     # tuned to bring total param count near spectogram 10.6M
-NOTES           = "drums, 5-level encoder, plain SI-SDR loss; output gated as tanh(decoder_out) * mixture to anchor output amplitude to mixture amplitude"
+NOTES           = "drums, 5-level encoder, pure L1 loss, no output gate"
 
 
 # ---------------------------------------------------------------------------
@@ -66,4 +67,5 @@ if __name__ == "__main__":
         target_source=TARGET_SOURCE,
         val_every_n_epochs=5,
         notes=NOTES,
+        loss_fn=nn.L1Loss(),
     )

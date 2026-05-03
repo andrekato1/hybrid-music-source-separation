@@ -185,6 +185,7 @@ def train(
     device: Optional[torch.device] = None,
     seed: int = 42,
     notes: str = "",
+    loss_fn: Optional[nn.Module] = None,
 ) -> ExperimentLogger:
     """
     Full training loop with logging and checkpointing.
@@ -209,7 +210,8 @@ def train(
 
     model = model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-    loss_fn = SISDRLoss()
+    if loss_fn is None:
+        loss_fn = SISDRLoss()
 
     config = ExperimentConfig(
         model_name=model.__class__.__name__,

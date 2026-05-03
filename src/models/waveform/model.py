@@ -23,7 +23,6 @@ from .decoder import DemucsDecoder
 
 @dataclass
 class WaveformLatent(Latent):
-    mixture: Tensor | None = None
     length: int = 0
 
 class BLSTM(nn.Module): ## Like Demuc
@@ -87,13 +86,12 @@ class WaveformModel(BaseEncDecSeparator):
         x = self.pre_lstm(x)
         x = self.lstm(x)
         x = self.post_lstm(x)
-        return WaveformLatent(bottleneck=x, skips=skips, mixture=mixture, length=length)
+        return WaveformLatent(bottleneck=x, skips=skips, length=length)
 
     def decode(self, latent: Latent) -> dict[str, Tensor]:
         assert isinstance(latent, WaveformLatent)
         x = self.decoder(latent.bottleneck, latent.skips)
-        x = x[..., :latent.length].tanh() * latent.mixture
-        return {self.target_source: x}
+        return {self.target_source: x[..., :latent.length]}
 
     def forward(self, mixture: Tensor) -> dict[str, Tensor]:
         return self.decode(self.encode(mixture))
