@@ -37,7 +37,7 @@ class MixedLoss(nn.Module):
         alpha: weight on the SI-SDR term. The remaining (1 - alpha) weight goes to L1.
     """
 
-    def __init__(self, alpha: float = 0.9) -> None:
+    def __init__(self, alpha: float = 0.5) -> None:
         super().__init__()
         self.alpha = alpha
 
