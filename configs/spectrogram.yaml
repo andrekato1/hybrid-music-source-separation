@@ -1,6 +1,6 @@
 experiment:
-  name: "spectrogram_run_05"
-  notes: ""
+  name: "spectrogram_run_06"
+  notes: "change loss to L1"
   seed: 42
 
 data:

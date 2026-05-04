@@ -185,6 +185,7 @@ def train(
     device: Optional[torch.device] = None,
     seed: int = 42,
     notes: str = "",
+    loss_fn: Optional[nn.Module] = None,
 ) -> ExperimentLogger:
     """
     Full training loop with logging and checkpointing.
@@ -200,6 +201,7 @@ def train(
         val_every_n_epochs:  run full-track eval every N epochs (expensive)
         device:              defaults to CUDA if available
         notes:               free-text note saved in config.json
+        loss_fn:             training loss module; defaults to SISDRLoss()
 
     Returns:
         ExperimentLogger with full training history.
@@ -209,7 +211,8 @@ def train(
 
     model = model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-    loss_fn = SISDRLoss()
+    if loss_fn is None:
+        loss_fn = SISDRLoss()
 
     config = ExperimentConfig(
         model_name=model.__class__.__name__,
@@ -221,6 +224,7 @@ def train(
             "val_every_n_epochs": val_every_n_epochs,
             "batch_size": train_loader.batch_size,
             "seed": seed,
+            "loss_fn": loss_fn.__class__.__name__,
         },
         notes=notes,
     )

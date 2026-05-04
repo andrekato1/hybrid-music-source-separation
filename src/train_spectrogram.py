@@ -15,6 +15,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import torch
+import torch.nn as nn
 import yaml
 
 from src.data.dataset import get_dataloaders
@@ -42,6 +43,7 @@ def main(config_path: str) -> None:
         experiment_name=cfg["experiment"]["name"],
         notes=cfg["experiment"]["notes"],
         seed=cfg["experiment"]["seed"],
+        loss_fn=nn.L1Loss(),
         **cfg["training"],
     )
 
