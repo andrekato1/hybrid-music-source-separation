@@ -33,6 +33,14 @@ class DemucsDecoder(nn.Module):
         C = base_channels
 
         # going the opposite direction to encoder
+        # mirrors encoder.layer5: takes the 16C bottleneck and steps down to 8C.
+        self.layer5 = nn.Sequential(
+            nn.Conv1d(16*C, 32*C, kernel_size=context, stride=1),
+            nn.GLU(dim=1),
+            nn.ConvTranspose1d(16*C, 8*C, kernel_size=8, stride=4),
+            nn.ReLU(),
+        )
+
         self.layer4 = nn.Sequential(
             nn.Conv1d(8*C, 16*C, kernel_size=context, stride=1),
             nn.GLU(dim=1),
@@ -62,7 +70,10 @@ class DemucsDecoder(nn.Module):
 
     def forward(self, x, skips):
         # skips coming from encoder
-        skip1, skip2, skip3, skip4 = skips
+        skip1, skip2, skip3, skip4, skip5 = skips
+        x = x + center_trim(skip5, x)
+        x = self.layer5(x)
+
         x = x + center_trim(skip4, x)
         x = self.layer4(x)
 
@@ -72,7 +83,7 @@ class DemucsDecoder(nn.Module):
         x = x + center_trim(skip2, x)
         x = self.layer2(x)
 
-        x= x +center_trim(skip1, x)
+        x = x + center_trim(skip1, x)
         x = self.layer1(x)
 
         return x

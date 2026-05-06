@@ -10,13 +10,20 @@ Model inspired by
 }
 """
 import math
+from dataclasses import dataclass
 
 import torch
 import torch.nn.functional as F
-from torch import nn
+from torch import Tensor, nn
 
+from src.models.base import BaseEncDecSeparator, Latent
 from .encoder import DemucsEncoder
 from .decoder import DemucsDecoder
+
+
+@dataclass
+class WaveformLatent(Latent):
+    length: int = 0
 
 class BLSTM(nn.Module): ## Like Demuc
     def __init__(self, dim, layers=2):
@@ -35,56 +42,57 @@ class BLSTM(nn.Module): ## Like Demuc
         x = x.permute(1,2,0)
         return x
 
-class WaveformModel(nn.Module):
-    def __init__(self, audio_channels=2, lstm_layers=2, base_channels=64):
+class WaveformModel(BaseEncDecSeparator):
+    def __init__(self, audio_channels=2, lstm_layers=2, base_channels=32, lstm_dim=320, target_source="vocals"):
         """
         :param audio_channels: 1 for mono, 2 for stereo
         :param lstm_layers: number of bidirectional LSTM layers in bottleneck
-        :param base_channels: base channel width for encoder/decoder (bottleneck = 8 * base_channels)
+        :param base_channels: base channel width for encoder/decoder (bottleneck = 16 * base_channels)
+        :param lstm_dim: hidden size of the bottleneck BLSTM (sets the bulk of the param count)
+        :param target_source: which stem this model separates ("vocals", "drums", "bass", "other")
         """
 
         super().__init__()
 
         self.audio_channels = audio_channels
-        bottleneck = 8 * base_channels
+        self.target_source = target_source
+        # 5 encoder/decoder levels with stride 4 → bottleneck length = T/1024.
+        # Channels at the bottleneck = 16 * base_channels (e.g. 32 → 512 channels)
+        # which matches the spectrogram branch's bottleneck width for hybrid fusion.
+        bottleneck = 16 * base_channels
 
         self.encoder = DemucsEncoder(in_channels=audio_channels, base_channels=base_channels)
 
-        self.pre_lstm  = nn.Conv1d(bottleneck, 256, kernel_size=1)
-        self.lstm      = BLSTM(dim=256, layers=lstm_layers)
-        self.post_lstm = nn.Conv1d(256, bottleneck, kernel_size=1)
+        self.pre_lstm  = nn.Conv1d(bottleneck, lstm_dim, kernel_size=1)
+        self.lstm      = BLSTM(dim=lstm_dim, layers=lstm_layers)
+        self.post_lstm = nn.Conv1d(lstm_dim, bottleneck, kernel_size=1)
 
         self.decoder = DemucsDecoder(in_channels=audio_channels, base_channels=base_channels)
 
     # Leveraged from Demucs: https://github.com/facebookresearch/demucs/blob/v2/demucs/model.py
     def valid_length(self, length):
         """Return the nearest valid length >= `length` so the decoder output matches exactly."""
-        for _ in range(4):
+        for _ in range(5):
             length = math.ceil((length - 8) / 4) + 1
             length += 2  # context - 1
-        for _ in range(4):
+        for _ in range(5):
             length = (length - 1) * 4 + 8
         return int(length)
 
-    def forward(self, x):
-        """
-
-        Input: Mixed audio of shape (batch, audio_channels, time)
-        Returns: Tensor separated sources of shape (batch, 1, audio_channels, time)
-        """
-        length = x.shape[-1]
-        x = F.pad(x, (0, self.valid_length(length) - length))
-
-        # encode
+    def encode(self, mixture: Tensor) -> WaveformLatent:
+        length = mixture.shape[-1]
+        x = F.pad(mixture, (0, self.valid_length(length) - length))
         x, skips = self.encoder(x)
-
-        # bottleneck
         x = self.pre_lstm(x)
         x = self.lstm(x)
         x = self.post_lstm(x)
+        return WaveformLatent(bottleneck=x, skips=skips, length=length)
 
-        # decode
-        x = self.decoder(x, skips)
+    def decode(self, latent: Latent) -> dict[str, Tensor]:
+        assert isinstance(latent, WaveformLatent)
+        x = self.decoder(latent.bottleneck, latent.skips)
+        return {self.target_source: x[..., :latent.length]}
 
-        return {"vocals": x[..., :length]}
+    def forward(self, mixture: Tensor) -> dict[str, Tensor]:
+        return self.decode(self.encode(mixture))
 

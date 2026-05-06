@@ -23,7 +23,7 @@ from torch import Tensor
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from .losses import SISDRLoss
+from .losses import SISDRLoss, SISDRWithMagnitudeLoss
 from .metrics import compute_sdr
 from .experiment import ExperimentConfig, ExperimentLogger, count_parameters
 
