@@ -126,3 +126,4 @@ cython_debug/
 # Project-specific
 data/*
 artifacts/checkpoints/*
+runs/
