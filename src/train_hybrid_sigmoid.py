@@ -1,24 +1,9 @@
 import torch
 import torch.nn as nn
-#print(f"CUDA available: {torch.cuda.is_available()}")
-#print(f"Device: {torch.cuda.get_device_name(0)}")
+
 from src.data.dataset import get_dataloaders
-from src.models.waveform.model import WaveformModel
+from src.models.hybrid.model import HybridGatingModel
 from src.trainer import train
-
-
-# ---------------------------------------------------------------------------
-# Placeholder model — kept for pipeline smoke testing
-# ---------------------------------------------------------------------------
-
-# class PlaceholderModel(torch.nn.Module):
-#     def __init__(self):
-#         super().__init__()
-#         self._dummy = torch.nn.Parameter(torch.zeros(1))
-#
-#     def forward(self, mixture):
-#         out = mixture + self._dummy * 0
-#         return {"drums": out, "bass": out, "other": out, "vocals": out}
 
 
 # ---------------------------------------------------------------------------
@@ -26,7 +11,7 @@ from src.trainer import train
 # ---------------------------------------------------------------------------
 
 ROOT            = "data/"
-EXPERIMENT_NAME = "waveform_blstm_5lvl_drums_4s_b8_s50_50ep_l1"
+EXPERIMENT_NAME = "hybrid_sigmoid_drums_4s_b8_s50_50ep_10M_l1"
 N_EPOCHS        = 50
 LEARNING_RATE   = 3e-4
 BATCH_SIZE      = 8
@@ -34,9 +19,11 @@ SEGMENT_DURATION = 4.0   # seconds
 SAMPLES_PER_TRACK = 50
 NUM_WORKERS     = 4       # set to 0 on Windows
 TARGET_SOURCE   = "drums"
-BASE_CHANNELS   = 32      # 5-level encoder → bottleneck channels = 16*32 = 512 (matches spectrogram branch)
-LSTM_DIM        = 320     # tuned to bring total param count near spectogram 10.6M
-NOTES           = "drums, 5-level encoder, pure L1 loss, no output gate"
+BASE_CHANNELS   = 24      # waveform branch: ~4.85M params (bottleneck = 16*24 = 384)
+LSTM_DIM        = 192
+SPEC_CHANNELS   = 24      # spectrogram branch: ~5.64M params (bottleneck channels = 24*16 = 384)
+SPEC_DEPTH      = 5
+NOTES           = "balanced 10M-param sigmoid-gated hybrid: per-feature gate weights waveform vs spectrogram contributions at the bottleneck. Pure L1 loss, no waveform output gate."
 
 
 # ---------------------------------------------------------------------------
@@ -55,7 +42,13 @@ if __name__ == "__main__":
         sources=[TARGET_SOURCE],
     )
 
-    model = WaveformModel(base_channels=BASE_CHANNELS, lstm_dim=LSTM_DIM, target_source=TARGET_SOURCE)
+    model = HybridGatingModel(
+        target_source=TARGET_SOURCE,
+        base_channels=BASE_CHANNELS,
+        lstm_dim=LSTM_DIM,
+        spec_channels=SPEC_CHANNELS,
+        spec_depth=SPEC_DEPTH,
+    )
 
     train(
         model=model,
