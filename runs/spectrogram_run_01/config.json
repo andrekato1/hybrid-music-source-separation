@@ -1,0 +1,13 @@
+{
+  "model_name": "SpectrogramBranch",
+  "parameter_count": 13432625,
+  "hyperparameters": {
+    "lr": 0.0003,
+    "n_epochs": 20,
+    "target_source": "vocals",
+    "val_every_n_epochs": 5,
+    "batch_size": 8,
+    "seed": 42
+  },
+  "notes": ""
+}
